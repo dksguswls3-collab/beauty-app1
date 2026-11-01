@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>인스타그램 뷰티 캐러셀 메이커</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2canvas CDN for PNG Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Google Fonts for Typography Selection -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;900&family=Nanum+Gothic:wght@400;700;800&family=Black+Han+Sans&family=Gowun+Dodum&family=Jua&family=Sunflower:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f1f5f9;
+            touch-action: manipulation;
+        }
+        .text-drop-shadow {
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75), 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .selection-dashed {
+            outline: 2px dashed #38bdf8;
+            outline-offset: 4px;
+        }
+        /* Mobile Touch Responsive Improvements */
+        @media (max-width: 768px) {
+            .mobile-bottom-sheet {
+                transition: transform 0.3s ease-in-out;
+            }
+            .mobile-bottom-sheet.collapsed {
+                transform: translateY(calc(100% - 54px));
+            }
+        }
+        /* Right Drawer Transition for Desktop & Collapsible Elements */
+        .drawer-right-transition {
+            transition: transform 0.3s ease-in-out, margin 0.3s ease-in-out;
+        }
+        .slide-list-transition {
+            transition: max-height 0.3s ease-in-out, opacity 0.2s ease-in-out, padding 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden select-none">
+
+    <!-- Top Header -->
+    <header class="bg-white border-b border-slate-200 px-3 md:px-4 py-2.5 flex justify-between items-center z-20 shrink-0 shadow-xs">
+        <div class="flex items-center space-x-2">
+            <div class="bg-gradient-to-r from-sky-400 to-blue-600 p-1.5 md:p-2 rounded-lg text-white">
+                <i data-lucide="layers" class="w-4 h-4 md:w-5 md:h-5"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-slate-800 text-sm md:text-base leading-tight">뷰티 캐러셀 메이커</h1>
+                <p class="text-[10px] md:text-xs text-slate-500 hidden sm:block">모바일 에디터 지원 · 멀티 슬라이드</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-1.5 md:space-x-2">
+            <!-- Toggle Control Panel Button for Desktop -->
+            <button onclick="toggleRightControls()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                <i data-lucide="sliders" class="w-3.5 h-3.5 md:w-4 md:h-4 text-sky-500"></i>
+                <span class="hidden sm:inline">설정 패널</span>
+            </button>
+            <button onclick="downloadCurrentSlide()" class="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                <i data-lucide="download" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
+                <span class="hidden sm:inline">현재</span> 저장
+            </button>
+            <button onclick="downloadAllSlides()" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1">
+                <i data-lucide="folder-down" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
+                <span>전체 다운로드</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <div class="flex-1 flex overflow-hidden flex-col md:flex-row relative">
+
+        <!-- Left Sidebar: Slides List Overview (Collapsible) -->
+        <aside id="slideListSidebar" class="w-full md:w-60 bg-white border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0 z-10 transition-all duration-300">
+            <div class="p-2 md:p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <button onclick="toggleSlideListFold()" class="text-xs font-bold text-slate-700 hover:text-sky-600 uppercase tracking-wider flex items-center gap-1.5 focus:outline-none">
+                    <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-sky-500"></i>
+                    <span>슬라이드 (<span id="slideCountTag">1</span>)</span>
+                    <i id="slideListFoldIcon" data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200"></i>
+                </button>
+                <button onclick="addNewSlide()" class="text-xs text-sky-600 hover:text-sky-700 font-semibold flex items-center gap-1 bg-sky-50 hover:bg-sky-100 px-2 py-1 rounded transition">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> 추가
+                </button>
+            </div>
+            
+            <!-- Slide Thumbnails Container (Foldable) -->
+            <div id="slideListContainer" class="slide-list-transition p-2 md:p-3 space-x-2 md:space-x-0 md:space-y-2.5 flex md:flex-col overflow-x-auto md:overflow-y-auto shrink-0 max-h-24 md:max-h-full opacity-100">
+                <!-- Dynamically Rendered Thumbnails -->
+            </div>
+
+            <!-- Global Settings (Desktop Only) -->
+            <div id="globalSettingsBox" class="p-3 bg-slate-50 border-t border-slate-200 space-y-3 hidden md:block mt-auto text-xs">
+                <div>
+                    <label class="font-semibold text-slate-600 block mb-1">화면 비율 (규격)</label>
+                    <select id="aspectRatioSelect" onchange="updateAspectRatio(this.value)" class="w-full border border-slate-300 rounded-md p-1.5 bg-white text-slate-700 focus:outline-none focus:border-sky-500">
+                        <option value="3:4" selected>3:4 세로형 (1080 x 1440)</option>
+                        <option value="4:5">4:5 세로형 (1080 x 1350)</option>
+                        <option value="1:1">1:1 정사각형 (1080 x 1080)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="font-semibold text-slate-600 block mb-1">인스타그램 ID (워터마크)</label>
+                    <input type="text" id="globalUsername" value="@hnjinn_otd" oninput="updateGlobalUsername()" class="w-full border border-slate-300 rounded-md p-1.5 bg-white text-slate-700 focus:outline-none focus:border-sky-500" placeholder="@username">
+                </div>
+                <div>
+                    <label class="font-semibold text-slate-600 block mb-1">연도 (Year)</label>
+                    <input type="text" id="globalWatermarkYear" value="2026" oninput="updateGlobalUsername()" class="w-full border border-slate-300 rounded-md p-1.5 bg-white text-slate-700 focus:outline-none focus:border-sky-500" placeholder="2026">
+                </div>
+            </div>
+        </aside>
+
+        <!-- Middle Canvas Preview Area -->
+        <main class="flex-1 bg-slate-200/80 flex flex-col items-center justify-start p-1 sm:p-3 overflow-y-auto relative pb-52 md:pb-12">
+            
+            <!-- Mobile Quick Toolbar / Navigation -->
+            <div class="md:hidden mb-2 mt-1 flex items-center justify-between w-full max-w-xs bg-white px-3 py-1 rounded-full shadow-sm text-xs font-medium border border-slate-200 z-10 shrink-0">
+                <div class="flex items-center gap-1">
+                    <button onclick="prevSlide()" class="p-1 text-slate-600 hover:text-black active:scale-95"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    <span id="mobileSlideIndicator" class="font-bold text-sky-600 px-1">1 / 1</span>
+                    <button onclick="nextSlide()" class="p-1 text-slate-600 hover:text-black active:scale-95"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleMobileDrawer()" class="bg-sky-50 text-sky-700 px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 border border-sky-200">
+                        <i data-lucide="sliders" class="w-3 h-3"></i> 편집 패널 <i id="mobileDrawerIcon" data-lucide="chevron-up" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Container Wrapper -->
+            <div id="canvasWrapper" class="relative shadow-xl rounded-none overflow-hidden bg-white transition-all duration-300 flex items-center justify-center mt-0 mb-4 shrink-0" style="width: 320px; height: 400px; aspect-ratio: 4/5;">
+                
+                <!-- Main Preview Render Target -->
+                <div id="carouselCanvas" class="relative overflow-hidden w-full h-full bg-slate-900 select-none touch-none rounded-none" onclick="handleCanvasBackgroundClick(event)">
+                    
+                    <!-- Background Image Layer -->
+                    <div id="bgImageWrapper" class="absolute inset-0 overflow-hidden cursor-pointer" onclick="selectElement('bg', event)" onmousedown="startCanvasDrag('bg', event)" ontouchstart="startCanvasDrag('bg', event)">
+                        <img id="bgImage" src="" alt="" class="hidden absolute inset-0 w-full h-full object-contain transform transition-transform duration-75 pointer-events-none">
+                        <div id="bgPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                            <i data-lucide="image" class="w-10 h-10 mb-2 stroke-1"></i>
+                            <p class="text-xs font-medium">하단/우측 패널에서 이미지를 업로드하세요</p>
+                        </div>
+                        <!-- Background Resize Corner Handles -->
+                        <div id="bgResizeHandles" class="absolute inset-0 pointer-events-none hidden">
+                            <div class="absolute w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nwse-resize pointer-events-auto shadow-md top-2 left-2" onmousedown="startResize('bg', 'tl', event)" ontouchstart="startResize('bg', 'tl', event)"></div>
+                            <div class="absolute w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nesw-resize pointer-events-auto shadow-md top-2 right-2" onmousedown="startResize('bg', 'tr', event)" ontouchstart="startResize('bg', 'tr', event)"></div>
+                            <div class="absolute w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nesw-resize pointer-events-auto shadow-md bottom-2 left-2" onmousedown="startResize('bg', 'bl', event)" ontouchstart="startResize('bg', 'bl', event)"></div>
+                            <div class="absolute w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nwse-resize pointer-events-auto shadow-md bottom-2 right-2" onmousedown="startResize('bg', 'br', event)" ontouchstart="startResize('bg', 'br', event)"></div>
+                        </div>
+                    </div>
+
+                    <!-- Gradient / Darkness Overlay Layer -->
+                    <div id="darknessOverlay" class="absolute inset-0 pointer-events-none transition-all duration-150"></div>
+
+                    <!-- Badge Layer -->
+                    <div id="badgeContainer" class="absolute transition-transform duration-75 pointer-events-none hidden flex items-center justify-center cursor-pointer z-20" style="top: 50%; left: 50%; transform: translate(-50%, -50%);" onclick="selectElement('badge', event)" onmousedown="startCanvasDrag('badge', event)" ontouchstart="startCanvasDrag('badge', event)">
+                        <span id="badgeText" class="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-sky-400 text-slate-900 shadow-sm pointer-events-auto">
+                            NEW
+                        </span>
+                        <div id="badgeResizeHandles" class="absolute inset-0 pointer-events-none hidden">
+                            <div class="absolute -top-1 -left-1 w-4 h-4 bg-white border-2 border-sky-500 rounded-full cursor-nwse-resize pointer-events-auto shadow-md" onmousedown="startResize('badge', 'tl', event)" ontouchstart="startResize('badge', 'tl', event)"></div>
+                            <div class="absolute -top-1 -right-1 w-4 h-4 bg-white border-2 border-sky-500 rounded-full cursor-nesw-resize pointer-events-auto shadow-md" onmousedown="startResize('badge', 'tr', event)" ontouchstart="startResize('badge', 'tr', event)"></div>
+                        </div>
+                    </div>
+
+                    <!-- Content Overlay Layer -->
+                    <div id="contentLayer" class="absolute inset-0 p-6 md:p-8 flex flex-col justify-between pointer-events-none z-10">
+
+                        <!-- Title and Subtitle Text Wrapper -->
+                        <div id="textWrapper" class="transition-all duration-75 my-auto w-full text-left pointer-events-auto cursor-pointer relative" style="transform: translate(0px, 0px);" onclick="selectElement('text', event)" onmousedown="startCanvasDrag('text', event)" ontouchstart="startCanvasDrag('text', event)">
+                            <h2 id="titleLine1" class="font-extrabold tracking-tight text-drop-shadow text-white text-2xl md:text-3xl">
+                                얼터큰거온다
+                            </h2>
+                            <h2 id="titleLine2" class="font-extrabold tracking-tight text-drop-shadow text-sky-300 text-2xl md:text-3xl">
+                                세컨 스킨 누드 컬렉션
+                            </h2>
+                            <!-- Adjusted leading for wider body line-height -->
+                            <p id="bodyText" class="text-slate-100 font-medium text-xs md:text-sm leading-relaxed md:leading-loose text-drop-shadow opacity-95" style="line-height: 1.75; margin-top: 6px;">
+                                글레이즈 밤이 진짜 미친거같음..;
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <!-- Dynamic Multi Free 1-Line Texts Container -->
+                    <div id="multiTextRenderContainer" class="absolute inset-0 pointer-events-none z-20"></div>
+
+                    <!-- RIP (Product/Highlight) Image Container Layer with Direct Drag & Resize Handles -->
+                    <div id="ripImageContainer" class="absolute transition-transform duration-75 pointer-events-none hidden flex items-center justify-center cursor-pointer z-25" style="top: 50%; left: 50%; transform: translate(-50%, -50%);" onclick="selectElement('rip', event)" onmousedown="startCanvasDrag('rip', event)" ontouchstart="startCanvasDrag('rip', event)">
+                        <div id="ripImageFrame" class="overflow-hidden pointer-events-auto flex items-center justify-center bg-slate-800/40 border-0 border-solid" style="width: 140px; height: 140px;">
+                            <img id="ripImage" src="" alt="RIP Image" class="w-full h-full object-cover pointer-events-none">
+                        </div>
+                        <!-- RIP Resize Corner Handles -->
+                        <div id="ripResizeHandles" class="absolute inset-0 pointer-events-none hidden">
+                            <div class="absolute -top-2 -left-2 w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nwse-resize pointer-events-auto shadow-md z-30" onmousedown="startResize('rip', 'tl', event)" ontouchstart="startResize('rip', 'tl', event)"></div>
+                            <div class="absolute -top-2 -right-2 w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nesw-resize pointer-events-auto shadow-md z-30" onmousedown="startResize('rip', 'tr', event)" ontouchstart="startResize('rip', 'tr', event)"></div>
+                            <div class="absolute -bottom-2 -left-2 w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nesw-resize pointer-events-auto shadow-md z-30" onmousedown="startResize('rip', 'bl', event)" ontouchstart="startResize('rip', 'bl', event)"></div>
+                            <div class="absolute -bottom-2 -right-2 w-5 h-5 bg-white border-2 border-sky-500 rounded-full cursor-nwse-resize pointer-events-auto shadow-md z-30" onmousedown="startResize('rip', 'br', event)" ontouchstart="startResize('rip', 'br', event)"></div>
+                        </div>
+                    </div>
+
+                    <!-- Fixed Bottom Copyright Watermark (Adjusted size to match image sample) -->
+                    <div class="absolute bottom-2 left-0 right-0 w-full flex items-center justify-center pointer-events-none z-30">
+                        <span id="watermarkText" class="text-[6.5px] font-medium tracking-widest text-drop-shadow select-none transition-colors opacity-80" style="color: rgba(255, 255, 255, 0.95); font-family: sans-serif;">
+                            © Copyright 2026 @hnjinn_otd All Rights Reserved.
+                        </span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- Right Controls Sidebar (Slide-in Drawer from Right on Desktop, Bottom Sheet on Mobile) -->
+        <aside id="controlsSidebar" class="drawer-right-transition mobile-bottom-sheet fixed md:absolute top-auto md:top-0 bottom-0 right-0 w-full md:w-80 bg-white border-t md:border-t-0 md:border-l border-slate-200 flex flex-col shrink-0 z-30 shadow-2xl md:shadow-lg h-[45vh] md:h-full rounded-t-2xl md:rounded-none overflow-hidden transform transition-transform duration-300">
+            
+            <!-- Mobile Drawer Handle Header -->
+            <div onclick="toggleMobileDrawer()" class="md:hidden p-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between cursor-pointer">
+                <div class="w-10 h-1 bg-slate-300 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-2"></div>
+                <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5 pt-1">
+                    <i data-lucide="sliders" class="w-3.5 h-3.5 text-sky-500"></i>
+                    슬라이드 디자인 편집
+                </span>
+                <span class="text-[11px] font-semibold text-sky-600 pt-1">닫기 / 접기</span>
+            </div>
+
+            <!-- Desktop Controls Header -->
+            <div class="hidden md:flex p-3 border-b border-slate-100 font-bold text-slate-800 text-sm items-center justify-between bg-slate-50/50">
+                <span class="flex items-center gap-1.5">
+                    <i data-lucide="sliders" class="w-4 h-4 text-sky-500"></i>
+                    슬라이드 디자인 설정
+                </span>
+                <div class="flex items-center gap-1">
+                    <button onclick="resetCurrentSlide()" title="초기화" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 px-1.5 py-1 rounded hover:bg-slate-100">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset
+                    </button>
+                    <button onclick="toggleRightControls()" title="패널 닫기" class="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Controls Content Body -->
+            <div class="p-3.5 md:p-4 space-y-5 text-xs overflow-y-auto flex-1">
+
+                <!-- Mobile Global Settings Bar -->
+                <div class="md:hidden space-y-2.5 border-b border-slate-100 pb-3 bg-slate-50 p-2.5 rounded-lg">
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="font-bold text-slate-700 text-[11px]">슬라이드 비율</label>
+                        <select id="mobileAspectRatioSelect" onchange="updateAspectRatio(this.value)" class="text-xs border border-slate-300 rounded p-1 bg-white">
+                            <option value="3:4" selected>3:4 세로형</option>
+                            <option value="4:5">4:5 세로형</option>
+                            <option value="1:1">1:1 정사각형</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="font-bold text-slate-700 text-[11px]">인스타그램 ID</label>
+                        <input type="text" id="mobileGlobalUsername" value="@hnjinn_otd" oninput="syncMobileUsername(this.value)" class="w-28 text-xs border border-slate-300 rounded p-1 bg-white" placeholder="@username">
+                    </div>
+                </div>
+
+                <!-- 0. Background Color Section -->
+                <div class="space-y-2 border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                        <i data-lucide="palette" class="w-3.5 h-3.5 text-sky-500"></i> 캔버스 배경색
+                    </h3>
+                    <div class="flex items-center justify-between border border-slate-200 p-2 rounded-lg bg-slate-50">
+                        <span class="text-slate-600 text-xs">기본 색상</span>
+                        <input type="color" id="canvasBgColorPicker" value="#0f172a" oninput="updateCanvasBackgroundColor(this.value)" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent">
+                    </div>
+                </div>
+
+                <!-- 1. Background Image Section -->
+                <div class="space-y-3 border-b border-slate-100 pb-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                            <i data-lucide="image" class="w-3.5 h-3.5 text-sky-500"></i> 메인 배경 이미지
+                        </h3>
+                        <button id="removeBgBtn" onclick="removeBgImage()" class="text-red-500 hover:text-red-700 text-[11px] hidden flex items-center gap-1 underline">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i> 삭제
+                        </button>
+                    </div>
+                    <div>
+                        <input type="file" id="bgFileInput" accept="image/*" onchange="handleBgUpload(event)" class="hidden">
+                        <label for="bgFileInput" class="w-full bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 border border-sky-200 rounded-lg py-2 px-3 flex items-center justify-center gap-2 cursor-pointer font-semibold transition text-xs">
+                            <i data-lucide="upload" class="w-4 h-4"></i> 이미지 업로드 / 변경
+                        </label>
+                    </div>
+
+                    <div id="imageControls" class="space-y-2.5 pt-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">이미지 확대/축소</span>
+                            <input type="range" id="bgScale" min="-100" max="150" value="0" oninput="updateBgTransform()" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <span class="text-slate-600">위치 X</span>
+                                <button onclick="resetBgX()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-0.5 rounded border border-slate-200">중앙</button>
+                            </div>
+                            <input type="range" id="bgPosX" min="-300" max="300" value="0" oninput="updateBgTransform()" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <span class="text-slate-600">위치 Y</span>
+                                <button onclick="resetBgY()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-0.5 rounded border border-slate-200">중앙</button>
+                            </div>
+                            <input type="range" id="bgPosY" min="-300" max="300" value="0" oninput="updateBgTransform()" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1">
+                                <span class="text-slate-600">회전 각도</span>
+                                <button onclick="resetBgRotation()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-1 py-0.5 rounded border border-slate-200">0도</button>
+                            </div>
+                            <input type="range" id="bgRotation" min="-180" max="180" value="0" oninput="updateBgTransform()" class="w-32 accent-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Overlay Gradient Section -->
+                <div class="space-y-2.5 border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                        <i data-lucide="sun" class="w-3.5 h-3.5 text-sky-500"></i> 그라데이션 및 명암
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">스타일</span>
+                            <select id="overlayType" onchange="updateOverlayStyle()" class="text-xs border border-slate-300 rounded p-1 bg-white">
+                                <option value="bottom" selected>블랙: 하단 어둡게</option>
+                                <option value="top">블랙: 상단 어둡게</option>
+                                <option value="both">블랙: 상하단 어둡게</option>
+                                <option value="full">블랙: 전체 어둡게</option>
+                                <option value="white-bottom">화이트: 하단 밝게</option>
+                                <option value="white-top">화이트: 상단 밝게</option>
+                                <option value="white-full">화이트: 전체 밝게</option>
+                                <option value="none">효과 없음</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">투명도 (농도)</span>
+                            <input type="range" id="overlayOpacity" min="0" max="100" value="70" oninput="updateOverlayStyle()" class="w-32 accent-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Typography Font Family Section -->
+                <div class="space-y-2.5 border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                        <i data-lucide="type" class="w-3.5 h-3.5 text-sky-500"></i> 대표 글꼴
+                    </h3>
+                    <select id="fontFamilySelect" onchange="updateFontFamily(this.value)" class="w-full text-xs border border-slate-300 rounded-lg p-1.5 bg-white text-slate-700 focus:outline-none focus:border-sky-500">
+                        <option value="'Inter', 'Noto Sans KR', sans-serif" selected>기본 (Inter & Noto Sans)</option>
+                        <option value="'Black Han Sans', sans-serif">임팩트 (블랙한샌즈)</option>
+                        <option value="'Jua', sans-serif">귀여운 (주아체)</option>
+                        <option value="'Gowun Dodum', sans-serif">깔끔한 (고운도듬)</option>
+                        <option value="'Nanum Gothic', sans-serif">나눔고딕</option>
+                        <option value="'Sunflower', sans-serif">해바라기체</option>
+                    </select>
+                </div>
+
+                <!-- RIP Image (Product Highlight Image) Section -->
+                <div class="space-y-3 border-b border-slate-100 pb-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                            <i data-lucide="box" class="w-3.5 h-3.5 text-sky-500"></i> RIP 이미지 (제품 강조)
+                        </h3>
+                        <button id="removeRipBtn" onclick="removeRipImage()" class="text-red-500 hover:text-red-700 text-[11px] hidden flex items-center gap-1 underline">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i> 삭제
+                        </button>
+                    </div>
+                    <div>
+                        <input type="file" id="ripFileInput" accept="image/*" onchange="handleRipUpload(event)" class="hidden">
+                        <label for="ripFileInput" class="w-full bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 border border-sky-200 rounded-lg py-2 px-3 flex items-center justify-center gap-2 cursor-pointer font-semibold transition text-xs">
+                            <i data-lucide="upload" class="w-4 h-4"></i> RIP 이미지 업로드
+                        </label>
+                    </div>
+
+                    <div id="ripControls" class="space-y-2.5 pt-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">이미지 모양</span>
+                            <select id="ripShape" onchange="updateRipDOM()" class="text-xs border border-slate-300 rounded p-1 bg-white">
+                                <option value="rounded" selected>둥근 네모</option>
+                                <option value="circle">원형</option>
+                                <option value="square">각진 네모</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">이미지 크기</span>
+                            <input type="range" id="ripSize" min="40" max="280" value="140" oninput="updateRipDOM()" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                                <span class="text-slate-600 text-[11px]">테두리 색상</span>
+                                <input type="color" id="ripBorderColor" value="#ffffff" oninput="updateRipDOM()" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-600 text-[11px]">테두리 두께</span>
+                                <input type="range" id="ripBorderWidth" min="0" max="12" value="2" oninput="updateRipDOM()" class="w-20 accent-sky-500">
+                            </div>
+                        </div>
+                        <div class="space-y-2 pt-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-600">위치 X</span>
+                                <input type="range" id="ripX" min="-180" max="180" value="0" oninput="updateRipPos()" class="w-32 accent-sky-500">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-600">위치 Y</span>
+                                <input type="range" id="ripY" min="-220" max="220" value="0" oninput="updateRipPos()" class="w-32 accent-sky-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Free Texts Section -->
+                <div class="space-y-3 border-b border-slate-100 pb-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-sky-500"></i> 자유 문구 추가
+                        </h3>
+                        <button onclick="addFreeTextItem()" class="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition">
+                            <i data-lucide="plus" class="w-3 h-3"></i> 문구 추가
+                        </button>
+                    </div>
+
+                    <!-- Free Text Selector Tabs -->
+                    <div id="freeTextTabsContainer" class="flex flex-wrap gap-1 bg-slate-100 p-1.5 rounded-lg border border-slate-200">
+                        <!-- Dynamically generated tabs -->
+                    </div>
+
+                    <!-- Active Free Text Edit Controls -->
+                    <div id="activeFreeTextControls" class="space-y-2.5 pt-1 hidden">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-slate-700 text-[11px]" id="activeFreeTextTitle">선택 문구 설정</span>
+                            <button onclick="removeActiveFreeTextItem()" class="text-red-500 hover:text-red-700 text-[10px] underline">현재 문구 삭제</button>
+                        </div>
+
+                        <textarea id="freeTextInputVal" rows="2" oninput="updateActiveFreeTextParam('text', this.value)" class="w-full border border-slate-300 rounded p-1.5 text-xs bg-white focus:outline-none focus:border-sky-500" placeholder="텍스트 입력 (엔터로 줄바꿈 가능)"></textarea>
+
+                        <!-- Box Container Option (Updated as per user's request) -->
+                        <div class="p-2 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="font-bold text-slate-700 text-[11px] flex items-center gap-1">
+                                    <i data-lucide="square" class="w-3 h-3 text-sky-500"></i> 텍스트 네모 상자 (Box)
+                                </label>
+                                <input type="checkbox" id="freeTextUseBox" onchange="updateActiveFreeTextParam('useBox', this.checked)" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300">
+                            </div>
+                            <div id="freeTextBoxSubControls" class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200 hidden">
+                                <div class="flex items-center justify-between bg-white p-1 rounded border border-slate-200">
+                                    <span class="text-[10px] text-slate-600">상자 배경</span>
+                                    <input type="color" id="freeTextBoxBgColor" value="#ffffff" oninput="updateActiveFreeTextParam('boxBgColor', this.value)" class="w-4 h-4 rounded cursor-pointer border-0 bg-transparent">
+                                </div>
+                                <div class="flex items-center justify-between bg-white p-1 rounded border border-slate-200">
+                                    <span class="text-[10px] text-slate-600">상자 테두리</span>
+                                    <input type="color" id="freeTextBoxBorderColor" value="#cccccc" oninput="updateActiveFreeTextParam('boxBorderColor', this.value)" class="w-4 h-4 rounded cursor-pointer border-0 bg-transparent">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shadow Toggle Option (Updated as per user's request) -->
+                        <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                            <span class="text-slate-600 text-[11px] font-semibold">텍스트 그림자 효과</span>
+                            <input type="checkbox" id="freeTextUseShadow" onchange="updateActiveFreeTextParam('shadow', this.checked)" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                                <span class="text-slate-600 text-[11px]">글자색</span>
+                                <input type="color" id="freeTextColorVal" value="#000000" oninput="updateActiveFreeTextParam('color', this.value)" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-600 text-[11px]">크기</span>
+                                <input type="range" id="freeTextSizeVal" min="10" max="64" value="13" oninput="updateActiveFreeTextParam('size', parseInt(this.value))" class="w-20 accent-sky-500">
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 pt-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-600">위치 X</span>
+                                <input type="range" id="freeTextXVal" min="-150" max="150" value="0" oninput="updateActiveFreeTextParam('x', parseInt(this.value))" class="w-32 accent-sky-500">
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-600">위치 Y</span>
+                                <input type="range" id="freeTextYVal" min="-220" max="220" value="0" oninput="updateActiveFreeTextParam('y', parseInt(this.value))" class="w-32 accent-sky-500">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Main Title & Body Section (Only shown on 1st Slide) -->
+                <div id="mainTextControlsSection" class="space-y-3 border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                        <i data-lucide="align-left" class="w-3.5 h-3.5 text-sky-500"></i> 타이틀/본문 (첫 슬라이드)
+                    </h3>
+                    
+                    <div>
+                        <label class="text-slate-500 block mb-1 text-[11px]">메인 타이틀 (줄바꿈 가능)</label>
+                        <textarea id="titleInput" rows="2" oninput="updateTitleText(this.value)" class="w-full border border-slate-300 rounded-lg p-1.5 text-xs bg-white focus:outline-none focus:border-sky-500" placeholder="타이틀 입력 (엔터로 1행/2행 구분)"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="text-slate-500 block mb-1 text-[11px]">본문 설명</label>
+                        <textarea id="bodyInput" rows="2" oninput="updateBodyText(this.value)" class="w-full border border-slate-300 rounded-lg p-1.5 text-xs bg-white focus:outline-none focus:border-sky-500" placeholder="본문 내용 입력"></textarea>
+                    </div>
+
+                    <!-- Main Title Shadow Controls -->
+                    <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                        <span class="text-slate-600 text-[11px] font-semibold">타이틀 문구 그림자</span>
+                        <input type="checkbox" id="mainTextUseShadow" onchange="toggleMainTextShadow(this.checked)" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300" checked>
+                    </div>
+
+                    <!-- Title & Body Controls -->
+                    <div class="space-y-2 pt-1 border-t border-slate-100">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600 text-[11px]">1행 크기</span>
+                            <input type="range" id="titleLine1FontSize" min="16" max="48" value="28" oninput="updateTitleLine1FontSize(parseInt(this.value))" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600 text-[11px]">2행 크기</span>
+                            <input type="range" id="titleLine2FontSize" min="16" max="48" value="28" oninput="updateTitleLine2FontSize(parseInt(this.value))" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600 text-[11px]">본문 크기</span>
+                            <input type="range" id="bodyFontSize" min="10" max="24" value="14" oninput="updateBodyFontSize(parseInt(this.value))" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600 text-[11px]">타이틀 행간 (1·2행)</span>
+                            <input type="range" id="titleLineHeight" min="90" max="180" value="120" oninput="updateTitleLineHeight(parseInt(this.value))" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600 text-[11px]">타이틀-본문 간격</span>
+                            <input type="range" id="titleBodyGap" min="0" max="40" value="6" oninput="updateTitleBodyGap(parseInt(this.value))" class="w-32 accent-sky-500">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <span class="text-slate-600 text-[11px]">정렬</span>
+                        <div class="flex bg-slate-100 p-0.5 rounded border border-slate-200">
+                            <button onclick="setTextAlign('left')" class="p-1 hover:bg-white rounded text-slate-700"><i data-lucide="align-left" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="setTextAlign('center')" class="p-1 hover:bg-white rounded text-slate-700"><i data-lucide="align-center" class="w-3.5 h-3.5"></i></button>
+                            <button onclick="setTextAlign('right')" class="p-1 hover:bg-white rounded text-slate-700"><i data-lucide="align-right" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                            <span class="text-slate-600 text-[11px]">1행 색상</span>
+                            <input type="color" id="titleLine1Color" value="#ffffff" oninput="updateTitleColors()" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                        </div>
+                        <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                            <span class="text-slate-600 text-[11px]">2행 색상</span>
+                            <input type="color" id="titleLine2Color" value="#7dd3fc" oninput="updateTitleColors()" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">위치 X</span>
+                            <input type="range" id="textX" min="-150" max="150" value="0" oninput="updateTextPos()" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">위치 Y</span>
+                            <input type="range" id="textY" min="-200" max="200" value="0" oninput="updateTextPos()" class="w-32 accent-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Point Badge Section -->
+                <div class="space-y-3 pb-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-700 flex items-center gap-1">
+                            <i data-lucide="tag" class="w-3.5 h-3.5 text-sky-500"></i> 포인트 배지 (Badge)
+                        </h3>
+                        <button onclick="clearBadge()" class="text-slate-400 hover:text-red-500 text-[10px] underline">지우기</button>
+                    </div>
+                    <input type="text" id="badgeInput" value="" oninput="updateBadgeText(this.value)" class="w-full border border-slate-300 rounded-lg p-1.5 text-xs bg-white focus:outline-none focus:border-sky-500" placeholder="문구 입력 시 표시됨 (예: NEW)">
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                            <span class="text-slate-600 text-[11px]">배경색</span>
+                            <input type="color" id="badgeBgColor" value="#38bdf8" oninput="updateBadgeColors()" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                        </div>
+                        <div class="flex items-center justify-between border border-slate-200 p-1.5 rounded-lg bg-slate-50">
+                            <span class="text-slate-600 text-[11px]">글자색</span>
+                            <input type="color" id="badgeTextColor" value="#0f172a" oninput="updateBadgeColors()" class="w-5 h-5 rounded cursor-pointer border-0 bg-transparent">
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">위치 X</span>
+                            <input type="range" id="badgeX" min="-180" max="180" value="0" oninput="updateBadgePos()" class="w-32 accent-sky-500">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-600">위치 Y</span>
+                            <input type="range" id="badgeY" min="-220" max="220" value="0" oninput="updateBadgePos()" class="w-32 accent-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        // Global State Management
+        let slides = [];
+        let currentSlideIndex = 0;
+        let globalAspectRatio = "3:4";
+        let globalUsername = "@hnjinn_otd";
+        let globalWatermarkYear = "2026";
+        let selectedElementType = null;
+        let activeFreeTextId = null;
+        let isMobileDrawerOpen = false;
+        let isRightControlsOpen = true;
+        let isSlideListFolded = false;
+
+        // Interaction State for dragging & resizing
+        let isDragging = false;
+        let isResizing = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let initialValX = 0;
+        let initialValY = 0;
+        let initialScale = 0;
+        let activeResizeHandle = null;
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function createDefaultFreeText(defaultText, useBox) {
+            return {
+                id: 'ftext_' + Math.random().toString(36).substr(2, 9),
+                text: defaultText || "개인적으로 공식 발색컷보다\n좀 핑크로 올라왔음",
+                color: "#1e293b",
+                size: 11,
+                x: -70,
+                y: -130,
+                shadow: false,
+                useBox: useBox !== undefined ? useBox : true,
+                boxBgColor: "#ffffff",
+                boxBorderColor: "#cccccc",
+                rotation: 0
+            };
+        }
+
+        function createDefaultSlide(isSecondOrMore) {
+            return {
+                canvasBgColor: "#0f172a",
+                bgImage: null,
+                bgScale: 0,
+                bgPosX: 0,
+                bgPosY: 0,
+                bgRotation: 0,
+                ripImage: null,
+                ripShape: "rounded",
+                ripSize: 140,
+                ripBorderColor: "#ffffff",
+                ripBorderWidth: 2,
+                ripX: 0,
+                ripY: 0,
+                overlayType: "bottom",
+                overlayOpacity: 70,
+                badgeText: "",
+                badgeBgColor: "#38bdf8",
+                badgeTextColor: "#0f172a",
+                badgeShape: "rounded",
+                badgeX: 0,
+                badgeY: 0,
+                badgeRotation: 0,
+                fontFamily: "'Inter', 'Noto Sans KR', sans-serif",
+                title: isSecondOrMore ? "" : "얼터큰거온다\n세컨 스킨 누드 컬렉션",
+                body: isSecondOrMore ? "" : "글레이즈 밤이 진짜 미친거같음..;",
+                textAlign: "left",
+                titleLine1Color: "#ffffff",
+                titleLine2Color: "#7dd3fc",
+                line1Size: 28,
+                line2Size: 28,
+                bodySize: 14,
+                titleLineHeight: 120,
+                titleBodyGap: 6,
+                bodyLineHeight: 150,
+                textX: 0,
+                textY: 0,
+                textShadow: true,
+                textRotation: 0,
+                freeTextList: isSecondOrMore ? [createDefaultFreeText("개인적으로 공식 발색컷보다\n좀 핑크로 올라왔음", true)] : []
+            };
+        }
+
+        function setInputValueIfExists(id, value) {
+            const el = document.getElementById(id);
+            if (el !== null && value !== undefined) {
+                if (el.type === 'checkbox') {
+                    el.checked = Boolean(value);
+                } else {
+                    el.value = value;
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            slides = [createDefaultSlide(false)];
+            activeFreeTextId = null;
+            renderThumbnails();
+            updateCanvasDimensions();
+            loadSlideToEditor(0);
+            updateGlobalUsername();
+            
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+
+            // Mouse & Touch Interaction Handlers
+            window.addEventListener('mousemove', handleGlobalMove);
+            window.addEventListener('mouseup', handleGlobalEnd);
+            window.addEventListener('touchmove', handleGlobalMove, { passive: false });
+            window.addEventListener('touchend', handleGlobalEnd);
+
+            if (window.innerWidth < 768) {
+                closeMobileDrawer();
+            }
+        });
+
+        function toggleRightControls() {
+            const sidebar = document.getElementById('controlsSidebar');
+            if (!sidebar) return;
+
+            if (isRightControlsOpen) {
+                sidebar.classList.add('translate-x-full');
+                isRightControlsOpen = false;
+            } else {
+                sidebar.classList.remove('translate-x-full');
+                isRightControlsOpen = true;
+            }
+        }
+
+        function toggleSlideListFold() {
+            const container = document.getElementById('slideListContainer');
+            const globalSettings = document.getElementById('globalSettingsBox');
+            const icon = document.getElementById('slideListFoldIcon');
+            
+            isSlideListFolded = !isSlideListFolded;
+
+            if (isSlideListFolded) {
+                if (container) {
+                    container.classList.add('max-h-0', 'opacity-0', 'p-0', 'overflow-hidden');
+                    container.classList.remove('p-2', 'md:p-3', 'max-h-24', 'md:max-h-full', 'opacity-100');
+                }
+                if (globalSettings) globalSettings.classList.add('hidden');
+                if (icon) icon.style.transform = 'rotate(-90deg)';
+            } else {
+                if (container) {
+                    container.classList.remove('max-h-0', 'opacity-0', 'p-0', 'overflow-hidden');
+                    container.classList.add('p-2', 'md:p-3', 'max-h-24', 'md:max-h-full', 'opacity-100');
+                }
+                if (globalSettings) globalSettings.classList.remove('hidden');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function toggleMobileDrawer() {
+            const drawer = document.getElementById('controlsSidebar');
+            if (!drawer) return;
+
+            if (isMobileDrawerOpen) {
+                closeMobileDrawer();
+            } else {
+                openMobileDrawer();
+            }
+        }
+
+        function openMobileDrawer() {
+            const drawer = document.getElementById('controlsSidebar');
+            const icon = document.getElementById('mobileDrawerIcon');
+            if (drawer) {
+                drawer.classList.remove('collapsed');
+                isMobileDrawerOpen = true;
+                if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        function closeMobileDrawer() {
+            const drawer = document.getElementById('controlsSidebar');
+            const icon = document.getElementById('mobileDrawerIcon');
+            if (drawer) {
+                drawer.classList.add('collapsed');
+                isMobileDrawerOpen = false;
+                if (icon) icon.setAttribute('data-lucide', 'chevron-up');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+
+        function syncMobileUsername(val) {
+            setInputValueIfExists('globalUsername', val);
+            updateGlobalUsername();
+        }
+
+        function addNewSlide() {
+            saveCurrentEditorState();
+            const newSlide = createDefaultSlide(true);
+            slides.push(newSlide);
+            currentSlideIndex = slides.length - 1;
+            activeFreeTextId = newSlide.freeTextList[0] ? newSlide.freeTextList[0].id : null;
+            renderThumbnails();
+            loadSlideToEditor(currentSlideIndex);
+        }
+
+        function deleteSlide(index, event) {
+            if (event) event.stopPropagation();
+            if (slides.length <= 1) return;
+            slides.splice(index, 1);
+            if (currentSlideIndex >= slides.length) {
+                currentSlideIndex = slides.length - 1;
+            }
+            activeFreeTextId = slides[currentSlideIndex].freeTextList[0] ? slides[currentSlideIndex].freeTextList[0].id : null;
+            renderThumbnails();
+            loadSlideToEditor(currentSlideIndex);
+        }
+
+        function selectSlide(index) {
+            saveCurrentEditorState();
+            currentSlideIndex = index;
+            activeFreeTextId = slides[currentSlideIndex].freeTextList[0] ? slides[currentSlideIndex].freeTextList[0].id : null;
+            renderThumbnails();
+            loadSlideToEditor(currentSlideIndex);
+        }
+
+        function prevSlide() {
+            if (currentSlideIndex > 0) selectSlide(currentSlideIndex - 1);
+        }
+
+        function nextSlide() {
+            if (currentSlideIndex < slides.length - 1) selectSlide(currentSlideIndex + 1);
+        }
+
+        function renderThumbnails() {
+            const container = document.getElementById('slideListContainer');
+            const countTag = document.getElementById('slideCountTag');
+            if (countTag) countTag.innerText = slides.length;
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            slides.forEach((slide, idx) => {
+                const isActive = idx === currentSlideIndex;
+                const thumb = document.createElement('div');
+                thumb.className = `relative cursor-pointer rounded-lg border-2 p-1.5 transition flex items-center gap-2 bg-white flex-shrink-0 w-28 md:w-auto ${isActive ? 'border-sky-500 bg-sky-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300'}`;
+                thumb.onclick = () => selectSlide(idx);
+
+                const thumbTitle = (slide.title && slide.title.split('\n')[0]) || (slide.ripImage ? '[RIP 이미지]' : '') || (slide.freeTextList[0] && slide.freeTextList[0].text) || `슬라이드 ${idx + 1}`;
+
+                thumb.innerHTML = `
+                    <div class="w-8 h-10 md:w-9 md:h-11 rounded overflow-hidden relative flex-shrink-0 flex items-center justify-center bg-slate-800" style="background-color: ${slide.canvasBgColor || '#0f172a'}">
+                        ${slide.bgImage ? `<img src="${slide.bgImage}" class="w-full h-full object-contain">` : `<span class="text-[9px] text-slate-400">No Img</span>`}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[11px] font-bold ${isActive ? 'text-sky-700' : 'text-slate-700'} truncate">
+                            ${escapeHTML(thumbTitle)}
+                        </p>
+                        <p class="text-[9px] text-slate-400">#${idx + 1}</p>
+                    </div>
+                    <button onclick="deleteSlide(${idx}, event)" class="p-0.5 text-slate-300 hover:text-red-500 rounded transition">
+                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                    </button>
+                `;
+                container.appendChild(thumb);
+            });
+
+            const mobileIndicator = document.getElementById('mobileSlideIndicator');
+            if (mobileIndicator) {
+                mobileIndicator.innerText = `${currentSlideIndex + 1} / ${slides.length}`;
+            }
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function saveCurrentEditorState() {
+            const slide = slides[currentSlideIndex];
+            if (!slide) return;
+
+            const fontElem = document.getElementById('fontFamilySelect');
+            if (fontElem) slide.fontFamily = fontElem.value;
+
+            const badgeElem = document.getElementById('badgeInput');
+            if (badgeElem) slide.badgeText = badgeElem.value;
+
+            const badgeBgColorElem = document.getElementById('badgeBgColor');
+            if (badgeBgColorElem) slide.badgeBgColor = badgeBgColorElem.value;
+
+            const badgeTextColorElem = document.getElementById('badgeTextColor');
+            if (badgeTextColorElem) slide.badgeTextColor = badgeTextColorElem.value;
+
+            const badgeXElem = document.getElementById('badgeX');
+            if (badgeXElem) slide.badgeX = parseInt(badgeXElem.value);
+
+            const badgeYElem = document.getElementById('badgeY');
+            if (badgeYElem) slide.badgeY = parseInt(badgeYElem.value);
+
+            const ripShapeElem = document.getElementById('ripShape');
+            if (ripShapeElem) slide.ripShape = ripShapeElem.value;
+
+            const ripSizeElem = document.getElementById('ripSize');
+            if (ripSizeElem) slide.ripSize = parseInt(ripSizeElem.value);
+
+            const ripBorderColorElem = document.getElementById('ripBorderColor');
+            if (ripBorderColorElem) slide.ripBorderColor = ripBorderColorElem.value;
+
+            const ripBorderWidthElem = document.getElementById('ripBorderWidth');
+            if (ripBorderWidthElem) slide.ripBorderWidth = parseInt(ripBorderWidthElem.value);
+
+            const ripXElem = document.getElementById('ripX');
+            if (ripXElem) slide.ripX = parseInt(ripXElem.value);
+
+            const ripYElem = document.getElementById('ripY');
+            if (ripYElem) slide.ripY = parseInt(ripYElem.value);
+
+            if (currentSlideIndex === 0) {
+                const titleElem = document.getElementById('titleInput');
+                if (titleElem) slide.title = titleElem.value;
+
+                const bodyElem = document.getElementById('bodyInput');
+                if (bodyElem) slide.body = bodyElem.value;
+
+                const titleColor1 = document.getElementById('titleLine1Color');
+                if (titleColor1) slide.titleLine1Color = titleColor1.value;
+
+                const titleColor2 = document.getElementById('titleLine2Color');
+                if (titleColor2) slide.titleLine2Color = titleColor2.value;
+
+                const tLine1Size = document.getElementById('titleLine1FontSize');
+                if (tLine1Size) slide.line1Size = parseInt(tLine1Size.value);
+
+                const tLine2Size = document.getElementById('titleLine2FontSize');
+                if (tLine2Size) slide.line2Size = parseInt(tLine2Size.value);
+
+                const bSize = document.getElementById('bodyFontSize');
+                if (bSize) slide.bodySize = parseInt(bSize.value);
+
+                const tLineHeight = document.getElementById('titleLineHeight');
+                if (tLineHeight) slide.titleLineHeight = parseInt(tLineHeight.value);
+
+                const tBodyGap = document.getElementById('titleBodyGap');
+                if (tBodyGap) slide.titleBodyGap = parseInt(tBodyGap.value);
+
+                const mainShadow = document.getElementById('mainTextUseShadow');
+                if (mainShadow) slide.textShadow = mainShadow.checked;
+            }
+
+            const bgScaleElem = document.getElementById('bgScale');
+            if (bgScaleElem) slide.bgScale = parseInt(bgScaleElem.value);
+
+            const bgXElem = document.getElementById('bgPosX');
+            if (bgXElem) slide.bgPosX = parseInt(bgXElem.value);
+
+            const bgYElem = document.getElementById('bgPosY');
+            if (bgYElem) slide.bgPosY = parseInt(bgYElem.value);
+
+            const textXElem = document.getElementById('textX');
+            if (textXElem) slide.textX = parseInt(textXElem.value);
+
+            const textYElem = document.getElementById('textY');
+            if (textYElem) slide.textY = parseInt(textYElem.value);
+
+            const overlayTypeElem = document.getElementById('overlayType');
+            if (overlayTypeElem) slide.overlayType = overlayTypeElem.value;
+
+            const overlayOpElem = document.getElementById('overlayOpacity');
+            if (overlayOpElem) slide.overlayOpacity = parseInt(overlayOpElem.value);
+        }
+
+        function loadSlideToEditor(index) {
+            const slide = slides[index];
+            if (!slide) return;
+
+            setInputValueIfExists('canvasBgColorPicker', slide.canvasBgColor || '#0f172a');
+            setInputValueIfExists('fontFamilySelect', slide.fontFamily || "'Inter', 'Noto Sans KR', sans-serif");
+            setInputValueIfExists('badgeInput', slide.badgeText || '');
+            setInputValueIfExists('badgeBgColor', slide.badgeBgColor || '#38bdf8');
+            setInputValueIfExists('badgeTextColor', slide.badgeTextColor || '#0f172a');
+            setInputValueIfExists('badgeX', slide.badgeX || 0);
+            setInputValueIfExists('badgeY', slide.badgeY || 0);
+
+            setInputValueIfExists('ripShape', slide.ripShape || 'rounded');
+            setInputValueIfExists('ripSize', slide.ripSize || 140);
+            setInputValueIfExists('ripBorderColor', slide.ripBorderColor || '#ffffff');
+            setInputValueIfExists('ripBorderWidth', slide.ripBorderWidth !== undefined ? slide.ripBorderWidth : 2);
+            setInputValueIfExists('ripX', slide.ripX || 0);
+            setInputValueIfExists('ripY', slide.ripY || 0);
+
+            const mainTextSection = document.getElementById('mainTextControlsSection');
+            if (mainTextSection) {
+                if (index === 0) {
+                    mainTextSection.classList.remove('hidden');
+                    setInputValueIfExists('titleInput', slide.title);
+                    setInputValueIfExists('bodyInput', slide.body);
+                    setInputValueIfExists('titleLine1Color', slide.titleLine1Color);
+                    setInputValueIfExists('titleLine2Color', slide.titleLine2Color);
+                    setInputValueIfExists('titleLine1FontSize', slide.line1Size || 28);
+                    setInputValueIfExists('titleLine2FontSize', slide.line2Size || 28);
+                    setInputValueIfExists('bodyFontSize', slide.bodySize || 14);
+                    setInputValueIfExists('titleLineHeight', slide.titleLineHeight || 120);
+                    setInputValueIfExists('titleBodyGap', slide.titleBodyGap !== undefined ? slide.titleBodyGap : 6);
+                    setInputValueIfExists('mainTextUseShadow', slide.textShadow !== undefined ? slide.textShadow : true);
+                } else {
+                    mainTextSection.classList.add('hidden');
+                }
+            }
+
+            setInputValueIfExists('bgScale', slide.bgScale !== undefined ? slide.bgScale : 0);
+            setInputValueIfExists('bgPosX', slide.bgPosX || 0);
+            setInputValueIfExists('bgPosY', slide.bgPosY || 0);
+            setInputValueIfExists('bgRotation', slide.bgRotation || 0);
+            setInputValueIfExists('textX', slide.textX || 0);
+            setInputValueIfExists('textY', slide.textY || 0);
+            setInputValueIfExists('overlayType', slide.overlayType);
+            setInputValueIfExists('overlayOpacity', slide.overlayOpacity);
+
+            updateCanvasBackgroundColor(slide.canvasBgColor || '#0f172a');
+            updateBgImageDOM();
+            updateRipDOM();
+            updateOverlayStyle();
+            updateBadgeDOM();
+            updateTextDOM();
+            updateTextPosDOM();
+            renderFreeTextTabs();
+            loadActiveFreeTextToEditor();
+            updateAllFreeTextsDOM();
+        }
+
+        function resetCurrentSlide() {
+            slides[currentSlideIndex] = createDefaultSlide(currentSlideIndex > 0);
+            activeFreeTextId = slides[currentSlideIndex].freeTextList[0] ? slides[currentSlideIndex].freeTextList[0].id : null;
+            loadSlideToEditor(currentSlideIndex);
+            renderThumbnails();
+        }
+
+        function updateAspectRatio(ratio) {
+            globalAspectRatio = ratio;
+            setInputValueIfExists('aspectRatioSelect', ratio);
+            setInputValueIfExists('mobileAspectRatioSelect', ratio);
+            updateCanvasDimensions();
+        }
+
+        function updateGlobalUsername() {
+            const usernameInput = document.getElementById('globalUsername');
+            const yearInput = document.getElementById('globalWatermarkYear');
+            
+            if (usernameInput) globalUsername = usernameInput.value || "@hnjinn_otd";
+            if (yearInput) globalWatermarkYear = yearInput.value || "2026";
+
+            setInputValueIfExists('mobileGlobalUsername', globalUsername);
+
+            const watermarkElem = document.getElementById('watermarkText');
+            if (watermarkElem) {
+                watermarkElem.innerText = `© Copyright ${globalWatermarkYear} ${globalUsername} All Rights Reserved.`;
+            }
+        }
+
+        function updateCanvasBackgroundColor(color) {
+            slides[currentSlideIndex].canvasBgColor = color;
+            const canvas = document.getElementById('carouselCanvas');
+            if (canvas) {
+                canvas.style.backgroundColor = color;
+            }
+            renderThumbnails();
+        }
+
+        function updateCanvasDimensions() {
+            const wrapper = document.getElementById('canvasWrapper');
+            if (!wrapper) return;
+
+            let ratioValue = 4 / 5;
+            if (globalAspectRatio === "1:1") {
+                ratioValue = 1 / 1;
+            } else if (globalAspectRatio === "3:4") {
+                ratioValue = 3 / 4;
+            } else if (globalAspectRatio === "4:5") {
+                ratioValue = 4 / 5;
+            }
+
+            wrapper.style.aspectRatio = `${ratioValue}`;
+            
+            const isMobile = window.innerWidth < 640;
+            if (ratioValue === 1) {
+                wrapper.style.height = isMobile ? '320px' : '420px';
+                wrapper.style.width = isMobile ? '320px' : '420px';
+            } else if (ratioValue === 3 / 4) {
+                wrapper.style.height = isMobile ? '380px' : '440px';
+                wrapper.style.width = isMobile ? '285px' : '330px';
+            } else {
+                wrapper.style.height = isMobile ? '390px' : '450px';
+                wrapper.style.width = isMobile ? '312px' : '360px';
+            }
+        }
+
+        function resetBgX() { setInputValueIfExists('bgPosX', 0); updateBgTransform(); }
+        function resetBgY() { setInputValueIfExists('bgPosY', 0); updateBgTransform(); }
+        function resetBgRotation() { setInputValueIfExists('bgRotation', 0); updateBgTransform(); }
+
+        function selectElement(type, event) {
+            if (event) event.stopPropagation();
+            selectedElementType = type;
+            
+            const bgWrapper = document.getElementById('bgImageWrapper');
+            const badgeContainer = document.getElementById('badgeContainer');
+            const ripContainer = document.getElementById('ripImageContainer');
+            const textWrapper = document.getElementById('textWrapper');
+            const bgHandles = document.getElementById('bgResizeHandles');
+            const badgeHandles = document.getElementById('badgeResizeHandles');
+            const ripHandles = document.getElementById('ripResizeHandles');
+
+            if (bgWrapper) bgWrapper.classList.remove('selection-dashed');
+            if (badgeContainer) badgeContainer.classList.remove('selection-dashed');
+            if (ripContainer) ripContainer.classList.remove('selection-dashed');
+            if (textWrapper) textWrapper.classList.remove('selection-dashed');
+            if (bgHandles) bgHandles.classList.add('hidden');
+            if (badgeHandles) badgeHandles.classList.add('hidden');
+            if (ripHandles) ripHandles.classList.add('hidden');
+
+            const slide = slides[currentSlideIndex];
+            if (slide && slide.freeTextList) {
+                slide.freeTextList.forEach(ft => {
+                    const ftEl = document.getElementById(`ftext_container_${ft.id}`);
+                    if (ftEl) ftEl.classList.remove('selection-dashed');
+                });
+            }
+
+            if (type === 'bg' && slide && slide.bgImage) {
+                if (bgWrapper) bgWrapper.classList.add('selection-dashed');
+                if (bgHandles) bgHandles.classList.remove('hidden');
+            } else if (type === 'badge' && slide && slide.badgeText) {
+                if (badgeContainer) badgeContainer.classList.add('selection-dashed');
+                if (badgeHandles) badgeHandles.classList.remove('hidden');
+            } else if (type === 'rip' && slide && slide.ripImage) {
+                if (ripContainer) ripContainer.classList.add('selection-dashed');
+                if (ripHandles) ripHandles.classList.remove('hidden');
+            } else if (type === 'text' && currentSlideIndex === 0) {
+                if (textWrapper) textWrapper.classList.add('selection-dashed');
+            } else if (type && type.startsWith('ftext-')) {
+                const ftId = type.replace('ftext-', '');
+                activeFreeTextId = ftId;
+                renderFreeTextTabs();
+                loadActiveFreeTextToEditor();
+                const targetFtEl = document.getElementById(`ftext_container_${ftId}`);
+                if (targetFtEl) targetFtEl.classList.add('selection-dashed');
+            }
+        }
+
+        function handleCanvasBackgroundClick(event) {
+            if (event.target.id === 'carouselCanvas' || event.target.id === 'darknessOverlay') {
+                selectedElementType = null;
+                const bgWrapper = document.getElementById('bgImageWrapper');
+                const badgeContainer = document.getElementById('badgeContainer');
+                const ripContainer = document.getElementById('ripImageContainer');
+                const textWrapper = document.getElementById('textWrapper');
+                const bgHandles = document.getElementById('bgResizeHandles');
+                const badgeHandles = document.getElementById('badgeResizeHandles');
+                const ripHandles = document.getElementById('ripResizeHandles');
+
+                if (bgWrapper) bgWrapper.classList.remove('selection-dashed');
+                if (badgeContainer) badgeContainer.classList.remove('selection-dashed');
+                if (ripContainer) ripContainer.classList.remove('selection-dashed');
+                if (textWrapper) textWrapper.classList.remove('selection-dashed');
+                if (bgHandles) bgHandles.classList.add('hidden');
+                if (badgeHandles) badgeHandles.classList.add('hidden');
+                if (ripHandles) ripHandles.classList.add('hidden');
+                
+                const slide = slides[currentSlideIndex];
+                if (slide && slide.freeTextList) {
+                    slide.freeTextList.forEach(ft => {
+                        const el = document.getElementById(`ftext_container_${ft.id}`);
+                        if (el) el.classList.remove('selection-dashed');
+                    });
+                }
+            }
+        }
+
+        function getEventCoords(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+            }
+            return { clientX: e.clientX, clientY: e.clientY };
+        }
+
+        function startCanvasDrag(type, event) {
+            event.stopPropagation();
+            selectElement(type, event);
+
+            const coords = getEventCoords(event);
+            isDragging = true;
+            dragStartX = coords.clientX;
+            dragStartY = coords.clientY;
+
+            const slide = slides[currentSlideIndex];
+            if (type === 'bg') {
+                initialValX = slide.bgPosX || 0;
+                initialValY = slide.bgPosY || 0;
+            } else if (type === 'badge') {
+                initialValX = slide.badgeX || 0;
+                initialValY = slide.badgeY || 0;
+            } else if (type === 'rip') {
+                initialValX = slide.ripX || 0;
+                initialValY = slide.ripY || 0;
+            } else if (type === 'text') {
+                initialValX = slide.textX || 0;
+                initialValY = slide.textY || 0;
+            } else if (type && type.startsWith('ftext-')) {
+                const ftId = type.replace('ftext-', '');
+                const ft = slide.freeTextList.find(f => f.id === ftId);
+                if (ft) {
+                    initialValX = ft.x || 0;
+                    initialValY = ft.y || 0;
+                }
+            }
+        }
+
+        function startResize(type, handle, event) {
+            event.stopPropagation();
+            const coords = getEventCoords(event);
+            isResizing = true;
+            activeResizeHandle = { type, handle };
+            dragStartX = coords.clientX;
+            dragStartY = coords.clientY;
+
+            const slide = slides[currentSlideIndex];
+            if (type === 'bg') {
+                initialScale = slide.bgScale !== undefined ? slide.bgScale : 0;
+            } else if (type === 'rip') {
+                initialScale = slide.ripSize || 140;
+            }
+        }
+
+        function handleGlobalMove(event) {
+            if (!isDragging && !isResizing) return;
+            const coords = getEventCoords(event);
+            const dx = coords.clientX - dragStartX;
+            const dy = coords.clientY - dragStartY;
+            const slide = slides[currentSlideIndex];
+
+            if (isDragging && selectedElementType) {
+                if (selectedElementType === 'bg') {
+                    slide.bgPosX = initialValX + dx;
+                    slide.bgPosY = initialValY + dy;
+                    setInputValueIfExists('bgPosX', slide.bgPosX);
+                    setInputValueIfExists('bgPosY', slide.bgPosY);
+                    updateBgImageDOM();
+                } else if (selectedElementType === 'badge') {
+                    slide.badgeX = initialValX + dx;
+                    slide.badgeY = initialValY + dy;
+                    setInputValueIfExists('badgeX', slide.badgeX);
+                    setInputValueIfExists('badgeY', slide.badgeY);
+                    updateBadgeDOM();
+                } else if (selectedElementType === 'rip') {
+                    slide.ripX = initialValX + dx;
+                    slide.ripY = initialValY + dy;
+                    setInputValueIfExists('ripX', slide.ripX);
+                    setInputValueIfExists('ripY', slide.ripY);
+                    updateRipDOM();
+                } else if (selectedElementType === 'text') {
+                    slide.textX = initialValX + dx;
+                    slide.textY = initialValY + dy;
+                    setInputValueIfExists('textX', slide.textX);
+                    setInputValueIfExists('textY', slide.textY);
+                    updateTextPosDOM();
+                } else if (selectedElementType.startsWith('ftext-')) {
+                    const ftId = selectedElementType.replace('ftext-', '');
+                    const ft = slide.freeTextList.find(f => f.id === ftId);
+                    if (ft) {
+                        ft.x = Math.max(-160, Math.min(160, initialValX + dx));
+                        ft.y = Math.max(-230, Math.min(230, initialValY + dy));
+                        setInputValueIfExists('freeTextXVal', ft.x);
+                        setInputValueIfExists('freeTextYVal', ft.y);
+                        updateAllFreeTextsDOM();
+                    }
+                }
+            } else if (isResizing && activeResizeHandle) {
+                const type = activeResizeHandle.type;
+                const handle = activeResizeHandle.handle;
+                let delta = (handle === 'br' || handle === 'tr') ? dx : -dx;
+
+                if (type === 'bg') {
+                    let newScale = Math.max(-100, Math.min(150, initialScale + Math.round(delta * 0.5)));
+                    slide.bgScale = newScale;
+                    setInputValueIfExists('bgScale', newScale);
+                    updateBgImageDOM();
+                } else if (type === 'rip') {
+                    let newSize = Math.max(40, Math.min(280, initialScale + Math.round(delta * 0.8)));
+                    slide.ripSize = newSize;
+                    setInputValueIfExists('ripSize', newSize);
+                    updateRipDOM();
+                }
+            }
+        }
+
+        function handleGlobalEnd() {
+            isDragging = false;
+            isResizing = false;
+            activeResizeHandle = null;
+        }
+
+        // RIP Image Functions
+        function handleRipUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                slides[currentSlideIndex].ripImage = e.target.result;
+                updateRipDOM();
+                selectElement('rip');
+                renderThumbnails();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeRipImage() {
+            slides[currentSlideIndex].ripImage = null;
+            const ripFileInput = document.getElementById('ripFileInput');
+            if (ripFileInput) ripFileInput.value = '';
+            updateRipDOM();
+            renderThumbnails();
+        }
+
+        function updateRipPos() {
+            const slide = slides[currentSlideIndex];
+            slide.ripX = parseInt(document.getElementById('ripX').value) || 0;
+            slide.ripY = parseInt(document.getElementById('ripY').value) || 0;
+            updateRipDOM();
+        }
+
+        function updateRipDOM() {
+            const slide = slides[currentSlideIndex];
+            const ripContainer = document.getElementById('ripImageContainer');
+            const ripFrame = document.getElementById('ripImageFrame');
+            const ripImg = document.getElementById('ripImage');
+            const removeRipBtn = document.getElementById('removeRipBtn');
+            const ripHandles = document.getElementById('ripResizeHandles');
+
+            const ripShapeElem = document.getElementById('ripShape');
+            const ripSizeElem = document.getElementById('ripSize');
+            const ripBorderColorElem = document.getElementById('ripBorderColor');
+            const ripBorderWidthElem = document.getElementById('ripBorderWidth');
+
+            if (ripShapeElem) slide.ripShape = ripShapeElem.value;
+            if (ripSizeElem) slide.ripSize = parseInt(ripSizeElem.value) || 140;
+            if (ripBorderColorElem) slide.ripBorderColor = ripBorderColorElem.value;
+            if (ripBorderWidthElem) slide.ripBorderWidth = parseInt(ripBorderWidthElem.value) || 0;
+
+            if (!slide.ripImage) {
+                if (ripContainer) ripContainer.classList.add('hidden');
+                if (removeRipBtn) removeRipBtn.classList.add('hidden');
+                if (ripHandles) ripHandles.classList.add('hidden');
+                return;
+            }
+
+            if (ripContainer) ripContainer.classList.remove('hidden');
+            if (removeRipBtn) removeRipBtn.classList.remove('hidden');
+            if (ripHandles && selectedElementType === 'rip') ripHandles.classList.remove('hidden');
+
+            if (ripImg) ripImg.src = slide.ripImage;
+
+            if (ripFrame) {
+                ripFrame.style.width = `${slide.ripSize || 140}px`;
+                ripFrame.style.height = `${slide.ripSize || 140}px`;
+                ripFrame.style.borderColor = slide.ripBorderColor || '#ffffff';
+                ripFrame.style.borderWidth = `${slide.ripBorderWidth !== undefined ? slide.ripBorderWidth : 2}px`;
+
+                if (slide.ripShape === 'circle') {
+                    ripFrame.style.borderRadius = '9999px';
+                } else if (slide.ripShape === 'square') {
+                    ripFrame.style.borderRadius = '0px';
+                } else {
+                    ripFrame.style.borderRadius = '1rem';
+                }
+            }
+
+            if (ripContainer) {
+                ripContainer.style.transform = `translate(calc(-50% + ${slide.ripX || 0}px), calc(-50% + ${slide.ripY || 0}px))`;
+            }
+        }
+
+        function updateBgImageDOM() {
+            const slide = slides[currentSlideIndex];
+            const imgElem = document.getElementById('bgImage');
+            const placeholder = document.getElementById('bgPlaceholder');
+            const bgResizeHandles = document.getElementById('bgResizeHandles');
+            const removeBgBtn = document.getElementById('removeBgBtn');
+
+            if (slide.bgImage) {
+                imgElem.src = slide.bgImage;
+                imgElem.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                if (removeBgBtn) removeBgBtn.classList.remove('hidden');
+                if (bgResizeHandles && selectedElementType === 'bg') bgResizeHandles.classList.remove('hidden');
+                const scaleVal = 1 + ((slide.bgScale || 0) / 100);
+                const transformStr = `translate(${slide.bgPosX || 0}px, ${slide.bgPosY || 0}px) scale(${scaleVal}) rotate(${slide.bgRotation || 0}deg)`;
+                imgElem.style.transform = transformStr;
+                bgResizeHandles.style.transform = transformStr;
+            } else {
+                imgElem.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                if (removeBgBtn) removeBgBtn.classList.add('hidden');
+                if (bgResizeHandles) bgResizeHandles.classList.add('hidden');
+            }
+        }
+
+        function removeBgImage() {
+            slides[currentSlideIndex].bgImage = null;
+            const bgFileInput = document.getElementById('bgFileInput');
+            if (bgFileInput) bgFileInput.value = '';
+            updateBgImageDOM();
+            renderThumbnails();
+        }
+
+        function updateBgTransform() {
+            const slide = slides[currentSlideIndex];
+            slide.bgScale = parseInt(document.getElementById('bgScale').value) || 0;
+            slide.bgPosX = parseInt(document.getElementById('bgPosX').value) || 0;
+            slide.bgPosY = parseInt(document.getElementById('bgPosY').value) || 0;
+            slide.bgRotation = parseInt(document.getElementById('bgRotation').value) || 0;
+            updateBgImageDOM();
+        }
+
+        function handleBgUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                slides[currentSlideIndex].bgImage = e.target.result;
+                updateBgImageDOM();
+                selectElement('bg');
+                renderThumbnails();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function updateOverlayStyle() {
+            const slide = slides[currentSlideIndex];
+            const typeElem = document.getElementById('overlayType');
+            const opElem = document.getElementById('overlayOpacity');
+            
+            if (typeElem) slide.overlayType = typeElem.value;
+            if (opElem) slide.overlayOpacity = parseInt(opElem.value);
+
+            const overlay = document.getElementById('darknessOverlay');
+            if (!overlay) return;
+
+            const opVal = slide.overlayOpacity / 100;
+            overlay.style.background = "";
+            overlay.style.backgroundColor = "";
+
+            switch(slide.overlayType) {
+                case 'bottom':
+                    overlay.style.background = `linear-gradient(to top, rgba(0,0,0,${opVal}), rgba(0,0,0,${opVal*0.3}) 60%, rgba(0,0,0,0))`;
+                    break;
+                case 'top':
+                    overlay.style.background = `linear-gradient(to bottom, rgba(0,0,0,${opVal}), rgba(0,0,0,${opVal*0.3}) 60%, rgba(0,0,0,0))`;
+                    break;
+                case 'both':
+                    overlay.style.background = `linear-gradient(to bottom, rgba(0,0,0,${opVal*0.8}), rgba(0,0,0,0) 50%, rgba(0,0,0,${opVal*0.8}))`;
+                    break;
+                case 'full':
+                    overlay.style.backgroundColor = `rgba(0, 0, 0, ${opVal})`;
+                    break;
+                case 'white-bottom':
+                    overlay.style.background = `linear-gradient(to top, rgba(255,255,255,${opVal}), rgba(255,255,255,${opVal*0.3}) 60%, rgba(255,255,255,0))`;
+                    break;
+                case 'white-top':
+                    overlay.style.background = `linear-gradient(to bottom, rgba(255,255,255,${opVal}), rgba(255,255,255,${opVal*0.3}) 60%, rgba(255,255,255,0))`;
+                    break;
+                case 'white-full':
+                    overlay.style.backgroundColor = `rgba(255, 255, 255, ${opVal})`;
+                    break;
+                default:
+                    overlay.style.backgroundColor = 'transparent';
+                    break;
+            }
+        }
+
+        function updateBadgeText(val) {
+            slides[currentSlideIndex].badgeText = val;
+            updateBadgeDOM();
+        }
+
+        function clearBadge() {
+            slides[currentSlideIndex].badgeText = "";
+            setInputValueIfExists('badgeInput', "");
+            updateBadgeDOM();
+        }
+
+        function updateBadgeColors() {
+            slides[currentSlideIndex].badgeBgColor = document.getElementById('badgeBgColor').value;
+            slides[currentSlideIndex].badgeTextColor = document.getElementById('badgeTextColor').value;
+            updateBadgeDOM();
+        }
+
+        function updateBadgePos() {
+            const slide = slides[currentSlideIndex];
+            slide.badgeX = parseInt(document.getElementById('badgeX').value) || 0;
+            slide.badgeY = parseInt(document.getElementById('badgeY').value) || 0;
+            updateBadgeDOM();
+        }
+
+        function updateBadgeDOM() {
+            const slide = slides[currentSlideIndex];
+            const badgeContainer = document.getElementById('badgeContainer');
+            const badgeText = document.getElementById('badgeText');
+
+            if (!slide.badgeText || slide.badgeText.trim() === "") {
+                badgeContainer.classList.add('hidden');
+                return;
+            }
+
+            badgeContainer.classList.remove('hidden');
+            badgeText.innerText = slide.badgeText;
+            badgeText.style.backgroundColor = slide.badgeBgColor || '#38bdf8';
+            badgeText.style.color = slide.badgeTextColor || '#0f172a';
+
+            badgeContainer.style.transform = `translate(calc(-50% + ${slide.badgeX || 0}px), calc(-50% + ${slide.badgeY || 0}px))`;
+        }
+
+        function updateFontFamily(font) {
+            slides[currentSlideIndex].fontFamily = font;
+            updateTextDOM();
+            updateAllFreeTextsDOM();
+        }
+
+        function updateTitleText(val) {
+            slides[currentSlideIndex].title = val;
+            updateTextDOM();
+            renderThumbnails();
+        }
+
+        function updateBodyText(val) {
+            slides[currentSlideIndex].body = val;
+            updateTextDOM();
+        }
+
+        function updateTitleLine1FontSize(size) {
+            slides[currentSlideIndex].line1Size = size;
+            updateTextDOM();
+        }
+
+        function updateTitleLine2FontSize(size) {
+            slides[currentSlideIndex].line2Size = size;
+            updateTextDOM();
+        }
+
+        function updateBodyFontSize(size) {
+            slides[currentSlideIndex].bodySize = size;
+            updateTextDOM();
+        }
+
+        function updateTitleLineHeight(val) {
+            slides[currentSlideIndex].titleLineHeight = val;
+            updateTextDOM();
+        }
+
+        function updateTitleBodyGap(val) {
+            slides[currentSlideIndex].titleBodyGap = val;
+            updateTextDOM();
+        }
+
+        function toggleMainTextShadow(checked) {
+            slides[currentSlideIndex].textShadow = checked;
+            updateTextDOM();
+        }
+
+        function setTextAlign(align) {
+            slides[currentSlideIndex].textAlign = align;
+            updateTextDOM();
+        }
+
+        function updateTitleColors() {
+            slides[currentSlideIndex].titleLine1Color = document.getElementById('titleLine1Color').value;
+            slides[currentSlideIndex].titleLine2Color = document.getElementById('titleLine2Color').value;
+            updateTextDOM();
+        }
+
+        function updateTextPos() {
+            const slide = slides[currentSlideIndex];
+            slide.textX = parseInt(document.getElementById('textX').value) || 0;
+            slide.textY = parseInt(document.getElementById('textY').value) || 0;
+            updateTextPosDOM();
+        }
+
+        function updateTextPosDOM() {
+            const slide = slides[currentSlideIndex];
+            const textWrapper = document.getElementById('textWrapper');
+            if (textWrapper) {
+                textWrapper.style.transform = `translate(${slide.textX || 0}px, ${slide.textY || 0}px)`;
+            }
+        }
+
+        function updateTextDOM() {
+            const slide = slides[currentSlideIndex];
+            const titleLine1 = document.getElementById('titleLine1');
+            const titleLine2 = document.getElementById('titleLine2');
+            const bodyText = document.getElementById('bodyText');
+            const textWrapper = document.getElementById('textWrapper');
+
+            if (!textWrapper) return;
+
+            if (currentSlideIndex > 0 || (!slide.title && !slide.body)) {
+                textWrapper.classList.add('hidden');
+                return;
+            }
+
+            textWrapper.classList.remove('hidden');
+            textWrapper.style.fontFamily = slide.fontFamily || "'Inter', 'Noto Sans KR', sans-serif";
+            textWrapper.style.textAlign = slide.textAlign || 'left';
+
+            const useShadow = slide.textShadow !== undefined ? slide.textShadow : true;
+            [titleLine1, titleLine2, bodyText].forEach(el => {
+                if (useShadow) {
+                    el.classList.add('text-drop-shadow');
+                } else {
+                    el.classList.remove('text-drop-shadow');
+                }
+            });
+
+            const lines = (slide.title || "").split('\n');
+            titleLine1.innerText = lines[0] || "";
+            titleLine2.innerText = lines.slice(1).join('\n') || "";
+
+            titleLine1.style.fontSize = `${slide.line1Size || 28}px`;
+            titleLine2.style.fontSize = `${slide.line2Size || 28}px`;
+
+            const lHeight = (slide.titleLineHeight || 120) / 100;
+            titleLine1.style.lineHeight = `${lHeight}`;
+            titleLine2.style.lineHeight = `${lHeight}`;
+
+            titleLine1.style.color = slide.titleLine1Color || '#ffffff';
+
+            if (lines.length > 1 && lines.slice(1).join('').trim() !== "") {
+                titleLine2.classList.remove('hidden');
+                titleLine2.style.color = slide.titleLine2Color || '#7dd3fc';
+            } else {
+                titleLine2.classList.add('hidden');
+            }
+
+            bodyText.innerText = slide.body || "";
+            bodyText.style.fontSize = `${slide.bodySize || 14}px`;
+            bodyText.style.marginTop = `${slide.titleBodyGap !== undefined ? slide.titleBodyGap : 6}px`;
+            bodyText.style.lineHeight = "1.75";
+        }
+
+        function addFreeTextItem() {
+            saveCurrentEditorState();
+            const slide = slides[currentSlideIndex];
+            if (!slide.freeTextList) slide.freeTextList = [];
+            const newFt = createDefaultFreeText(`자유 문구 #${slide.freeTextList.length + 1}`, false);
+            slide.freeTextList.push(newFt);
+            activeFreeTextId = newFt.id;
+            renderFreeTextTabs();
+            loadActiveFreeTextToEditor();
+            updateAllFreeTextsDOM();
+            renderThumbnails();
+        }
+
+        function removeActiveFreeTextItem() {
+            const slide = slides[currentSlideIndex];
+            if (!slide.freeTextList || slide.freeTextList.length <= 0) return;
+            const idx = slide.freeTextList.findIndex(f => f.id === activeFreeTextId);
+            if (idx !== -1) {
+                slide.freeTextList.splice(idx, 1);
+                activeFreeTextId = slide.freeTextList[0] ? slide.freeTextList[0].id : null;
+                renderFreeTextTabs();
+                loadActiveFreeTextToEditor();
+                updateAllFreeTextsDOM();
+                renderThumbnails();
+            }
+        }
+
+        function renderFreeTextTabs() {
+            const container = document.getElementById('freeTextTabsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const slide = slides[currentSlideIndex];
+            if (!slide.freeTextList || slide.freeTextList.length === 0) {
+                container.innerHTML = `<span class="text-[10px] text-slate-400 p-1">추가된 자유 문구가 없습니다.</span>`;
+                return;
+            }
+
+            slide.freeTextList.forEach((ft, idx) => {
+                const isActive = ft.id === activeFreeTextId;
+                const tab = document.createElement('button');
+                tab.className = `px-2 py-0.5 rounded text-[11px] font-semibold transition ${isActive ? 'bg-sky-500 text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'}`;
+                tab.innerText = `문구 #${idx + 1}`;
+                tab.onclick = () => {
+                    activeFreeTextId = ft.id;
+                    renderFreeTextTabs();
+                    loadActiveFreeTextToEditor();
+                    selectElement(`ftext-${ft.id}`);
+                };
+                container.appendChild(tab);
+            });
+        }
+
+        function loadActiveFreeTextToEditor() {
+            const slide = slides[currentSlideIndex];
+            const activeControlsContainer = document.getElementById('activeFreeTextControls');
+            if (!slide.freeTextList || slide.freeTextList.length === 0) {
+                if (activeControlsContainer) activeControlsContainer.classList.add('hidden');
+                return;
+            }
+
+            const ft = slide.freeTextList.find(f => f.id === activeFreeTextId);
+            if (!ft && slide.freeTextList.length > 0) {
+                activeFreeTextId = slide.freeTextList[0].id;
+            }
+            const currentFt = slide.freeTextList.find(f => f.id === activeFreeTextId);
+            if (!currentFt) {
+                if (activeControlsContainer) activeControlsContainer.classList.add('hidden');
+                return;
+            }
+
+            if (activeControlsContainer) activeControlsContainer.classList.remove('hidden');
+            const ftIdx = slide.freeTextList.findIndex(f => f.id === activeFreeTextId);
+            const titleLbl = document.getElementById('activeFreeTextTitle');
+            if (titleLbl) titleLbl.innerText = `자유 문구 #${ftIdx + 1} 설정`;
+
+            setInputValueIfExists('freeTextInputVal', currentFt.text || '');
+            setInputValueIfExists('freeTextColorVal', currentFt.color || '#000000');
+            setInputValueIfExists('freeTextSizeVal', currentFt.size || 13);
+            setInputValueIfExists('freeTextXVal', currentFt.x || 0);
+            setInputValueIfExists('freeTextYVal', currentFt.y || 0);
+            setInputValueIfExists('freeTextUseShadow', currentFt.shadow !== undefined ? currentFt.shadow : false);
+
+            setInputValueIfExists('freeTextUseBox', currentFt.useBox !== undefined ? currentFt.useBox : false);
+            setInputValueIfExists('freeTextBoxBgColor', currentFt.boxBgColor || '#ffffff');
+            setInputValueIfExists('freeTextBoxBorderColor', currentFt.boxBorderColor || '#cccccc');
+
+            const subBoxCtrl = document.getElementById('freeTextBoxSubControls');
+            if (subBoxCtrl) {
+                if (currentFt.useBox) {
+                    subBoxCtrl.classList.remove('hidden');
+                } else {
+                    subBoxCtrl.classList.add('hidden');
+                }
+            }
+        }
+
+        function updateActiveFreeTextParam(param, value) {
+            const slide = slides[currentSlideIndex];
+            if (!slide.freeTextList) return;
+            const ft = slide.freeTextList.find(f => f.id === activeFreeTextId);
+            if (!ft) return;
+
+            ft[param] = value;
+
+            if (param === 'useBox') {
+                const subBoxCtrl = document.getElementById('freeTextBoxSubControls');
+                if (subBoxCtrl) {
+                    if (value) subBoxCtrl.classList.remove('hidden');
+                    else subBoxCtrl.classList.add('hidden');
+                }
+            }
+
+            updateAllFreeTextsDOM();
+            renderThumbnails();
+        }
+
+        function updateAllFreeTextsDOM() {
+            const slide = slides[currentSlideIndex];
+            const container = document.getElementById('multiTextRenderContainer');
+            if (!container) return;
+
+            container.innerHTML = '';
+            if (!slide.freeTextList) return;
+
+            slide.freeTextList.forEach((ft) => {
+                const wrap = document.createElement('div');
+                wrap.id = `ftext_container_${ft.id}`;
+                wrap.className = `absolute cursor-pointer pointer-events-auto transition-transform duration-75 flex items-center justify-center`;
+                wrap.style.top = `calc(50% + ${ft.y || 0}px)`;
+                wrap.style.left = `calc(50% + ${ft.x || 0}px)`;
+                wrap.style.transform = `translate(-50%, -50%)`;
+                wrap.style.fontFamily = slide.fontFamily || "'Inter', 'Noto Sans KR', sans-serif";
+                wrap.onclick = (e) => selectElement(`ftext-${ft.id}`, e);
+                wrap.onmousedown = (e) => startCanvasDrag(`ftext-${ft.id}`, e);
+                wrap.ontouchstart = (e) => startCanvasDrag(`ftext-${ft.id}`, e);
+
+                const textBox = document.createElement('div');
+                
+                if (ft.useBox) {
+                    textBox.className = 'px-3 py-2 bg-white rounded-none border text-left flex flex-col justify-center';
+                    textBox.style.backgroundColor = ft.boxBgColor || '#ffffff';
+                    textBox.style.borderColor = ft.boxBorderColor || '#cccccc';
+                    textBox.style.borderWidth = '1px';
+                    textBox.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                } else {
+                    textBox.className = 'p-1 text-center';
+                }
+
+                const lines = (ft.text || '').split('\n');
+                lines.forEach((lineText, lIdx) => {
+                    const p = document.createElement('p');
+                    p.className = `font-medium tracking-tight whitespace-nowrap leading-snug ${ft.shadow ? 'text-drop-shadow' : ''}`;
+                    p.style.color = ft.color || '#000000';
+                    p.style.fontSize = `${ft.size || 13}px`;
+                    p.innerText = lineText;
+                    textBox.appendChild(p);
+                });
+
+                wrap.appendChild(textBox);
+                container.appendChild(wrap);
+            });
+        }
+
+        function downloadCurrentSlide() {
+            const canvasWrapper = document.getElementById('canvasWrapper');
+            if (!canvasWrapper) return;
+
+            selectElement(null);
+
+            setTimeout(() => {
+                html2canvas(canvasWrapper, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: null,
+                    logging: false
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = `carousel-slide-${currentSlideIndex + 1}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                });
+            }, 50);
+        }
+
+        async function downloadAllSlides() {
+            const originalIndex = currentSlideIndex;
+            for (let i = 0; i < slides.length; i++) {
+                selectSlide(i);
+                await new Promise(resolve => setTimeout(resolve, 250));
+                
+                const canvasWrapper = document.getElementById('canvasWrapper');
+                if (canvasWrapper) {
+                    selectElement(null);
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    const canvas = await html2canvas(canvasWrapper, { 
+                        scale: 2, 
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: null,
+                        logging: false
+                    });
+                    const link = document.createElement('a');
+                    link.download = `carousel-slide-${i + 1}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                }
+            }
+            selectSlide(originalIndex);
+        }
+    </script>
+</body>
+</html>
